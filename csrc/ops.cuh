@@ -11,7 +11,6 @@
 #include <iostream>
 #include <unistd.h>
 #include <assert.h>
-
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_fp16.h>
 #include <hipblas.h>

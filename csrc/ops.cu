@@ -7,7 +7,7 @@
 #include <hip/hip_runtime.h>
 #include "ops.cuh"
 #include "kernels.cuh"
-#include <cub/device/device_scan.cuh>
+// #include <hipcub/device/device_scan.cuh>
 #include <limits>
 // #include <BinSearch.h>
 #include <AAlloc.h>
@@ -223,24 +223,32 @@ template<typename T> void percentileClipping(T * g, float *gnorm_vec, int step, 
 
 void gemmex(Context *context, bool transposeA, bool transposeB, int m, int n, int k, void *A, void *B, void *C, int lda, int ldb, int ldc)
 {
-  const int falpha = 1;
-  const int fbeta = 0;
-  const void * alpha = &falpha;
-  const void * beta = &fbeta;
-	hipblasStatus_t status;
+  cout << "" << endl;
+  cout << "=============================================" << endl;
+  cout << "ERROR: Your GPU does not support Int8 Matmul!" << endl;
+  cout << "=============================================" << endl;
+  cout << "" << endl;
+  assert(false);
 
-			status = hipblasGemmEx(context->m_handle,
-					transposeA ? HIPBLAS_OP_T : HIPBLAS_OP_N,
-					transposeB ? HIPBLAS_OP_T : HIPBLAS_OP_N,
-					m, n,	k,
-					alpha, A, HIPBLAS_R_8I, lda, B, HIPBLAS_R_8I, ldb, beta,
-					C, HIPBLAS_R_32I, ldc,
-          HIPBLAS_R_32I, CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+	return ;
+  // const int falpha = 1;
+  // const int fbeta = 0;
+  // const void * alpha = &falpha;
+  // const void * beta = &fbeta;
+	// hipblasStatus_t status;
 
-    if (status != HIPBLAS_STATUS_SUCCESS)
-    {
-      std::cout << "CUBLAS ERROR: Status " << status << std::endl;
-    }
+	// 		status = hipblasGemmEx(context->m_handle,
+	// 				transposeA ? HIPBLAS_OP_T : HIPBLAS_OP_N,
+	// 				transposeB ? HIPBLAS_OP_T : HIPBLAS_OP_N,
+	// 				m, n,	k,
+	// 				alpha, A, HIPBLAS_R_8I, lda, B, HIPBLAS_R_8I, ldb, beta,
+	// 				C, HIPBLAS_R_32I, ldc,
+  //         HIPBLAS_R_32I, CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+
+  //   if (status != HIPBLAS_STATUS_SUCCESS)
+  //   {
+  //     std::cout << "CUBLAS ERROR: Status " << status << std::endl;
+  //   }
 
 }
 

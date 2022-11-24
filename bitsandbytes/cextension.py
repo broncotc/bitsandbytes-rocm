@@ -27,7 +27,7 @@ class CUDASetup(object):
         self.initialized = True
         self.cuda_setup_log = []
 
-        binary_name = "libbitsandbytes_hip.so"
+        binary_name = "libbitsandbytes_hip_nocublaslt.so"
         package_dir = Path(__file__).parent
         binary_path = package_dir / binary_name
 

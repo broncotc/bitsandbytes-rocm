@@ -20,7 +20,7 @@ CSRC := $(ROOT_DIR)/csrc
 BUILD_DIR:= $(ROOT_DIR)/build
 
 FILES_CUDA := $(CSRC)/ops.cu $(CSRC)/kernels.cu
-FILES_HIP := $(CSRC)/ops.cu $(CSRC)/kernels.cu
+# FILES_HIP := $(CSRC)/ops.cu $(CSRC)/kernels.cu
 FILES_CPP := $(CSRC)/common.cpp $(CSRC)/cpu_ops.cpp $(CSRC)/pythonInterface.c
 
 INCLUDE :=  -I $(CUDA_HOME)/include -I $(ROOT_DIR)/csrc -I $(CONDA_PREFIX)/include -I $(ROOT_DIR)/include
@@ -97,6 +97,17 @@ cuda11x: $(BUILD_DIR) env
 
 cpuonly: $(BUILD_DIR) env
 	$(GPP) -std=c++14 -shared -fPIC -I $(ROOT_DIR)/csrc -I $(ROOT_DIR)/include $(FILES_CPP) -o ./bitsandbytes/libbitsandbytes_cpu.so
+
+
+HIP_INCLUDE := -I $(ROOT_DIR)/csrc -I $(ROOT_DIR)/include 
+# -I /opt/rocm-5.3.0/hipcub/include
+HIP_LIB := -L/opt/rocm-5.3.0/lib -L/opt/rocm-5.3.0/llvm/bin/../lib/clang/15.0.0/lib/linux -L/usr/lib/gcc/x86_64-linux-gnu/11 -L/usr/lib/gcc/x86_64-linux-gnu/11/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/lib -L/usr/lib -lgcc_s -lgcc -lpthread -lm -lrt -lamdhip64 -lhipblas -lhipsparse -lclang_rt.builtins-x86_64 -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc
+
+hip: $(BUILD_DIR)
+	/usr/bin/hipcc -std=c++14 -c -fPIC --amdgpu-target=gfx1030 $(HIP_INCLUDE) -o $(BUILD_DIR)/ops.o -D NO_CUBLASLT $(CSRC)/ops.cu
+	/usr/bin/hipcc -std=c++14 -c -fPIC --amdgpu-target=gfx1030 $(HIP_INCLUDE) -o $(BUILD_DIR)/kernels.o -D NO_CUBLASLT $(CSRC)/kernels.cu
+	# /usr/bin/hipcc -fPIC -static $(BUILD_DIR)/ops.o $(BUILD_DIR)/kernels.o -o $(BUILD_DIR)/link.so 
+	$(GPP) -std=c++14 -D__HIP_PLATFORM_AMD__ -DBUILD_CUDA -shared -fPIC -I /opt/rocm/include $(HIP_INCLUDE) $(BUILD_DIR)/ops.o $(BUILD_DIR)/kernels.o $(FILES_CPP) $(HIP_LIB) -o ./bitsandbytes/libbitsandbytes_hip_nocublaslt.so 
 
 env:
 	@echo "ENVIRONMENT"
