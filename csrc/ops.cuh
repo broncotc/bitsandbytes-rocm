@@ -12,29 +12,31 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <cuda_runtime_api.h>
-#include <cuda_fp16.h>
-#include <cublas_v2.h>
-#include <cublasLt.h>
-#include <cusparse.h>
+#include <hip/hip_runtime_api.h>
+#include <hip/hip_fp16.h>
+#include <hipblas.h>
+// #include <cublasLt.h>
+#include <hipsparse.h>
 #include <vector>
 #include <functional>
 
+typedef struct cublasLtContext* cublasLtHandle_t;
+
 #define CUDA_CHECK_RETURN(value) {                      \
-  cudaError_t _m_cudaStat = value;                    \
-  if (_m_cudaStat != cudaSuccess) {                   \
+  hipError_t _m_cudaStat = value;                    \
+  if (_m_cudaStat != hipSuccess) {                   \
     fprintf(stderr, "Error %s at line %d in file %s\n",         \
-        cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);   \
+        hipGetErrorString(_m_cudaStat), __LINE__, __FILE__);   \
     exit(1);                              \
   } }
 
 #define THREADS_PER_BLOCKS (512)
 
 #define CHECK_CUSPARSE(value) {                      \
-  cusparseStatus_t _m_cudaStat = value;                    \
-  if (_m_cudaStat != CUSPARSE_STATUS_SUCCESS) {                   \
-    fprintf(stderr, "Error %s at line %d in file %s\n",         \
-        cusparseGetErrorString(_m_cudaStat), __LINE__, __FILE__);   \
+  hipsparseStatus_t _m_cudaStat = value;                    \
+  if (_m_cudaStat != HIPSPARSE_STATUS_SUCCESS) {                   \
+    fprintf(stderr, "Error <sparse error> at line %d in file %s\n",         \
+         __LINE__, __FILE__);   \
     exit(1);                              \
   } }
 
@@ -42,15 +44,15 @@
 #define THREADS_PER_BLOCKS (512)
 
 
-inline void checkCudaStatus(cudaError_t status) {
-    if (status != cudaSuccess) {
-        printf("cuda API failed with status %d: %s\n", status, cudaGetErrorString(status));
+inline void checkCudaStatus(hipError_t status) {
+    if (status != hipSuccess) {
+        printf("cuda API failed with status %d: %s\n", status, hipGetErrorString(status));
         throw std::logic_error("cuda API failed");
     }
 }
 
-inline int checkCublasStatus(cublasStatus_t status) {
-    if (status != CUBLAS_STATUS_SUCCESS) {
+inline int checkCublasStatus(hipblasStatus_t status) {
+    if (status != HIPBLAS_STATUS_SUCCESS) {
         printf("cuBLAS API failed with status %d\n", status);
         //throw std::logic_error("cuBLAS API failed");
         return 1;
@@ -84,40 +86,40 @@ typedef enum Transform_t
 class Context
 {
     public:
-				cublasHandle_t m_handle;
+				hipblasHandle_t m_handle;
 
 				Context()
 				{
-					cublasHandle_t handle;
-					cublasCreate_v2(&handle);
+					hipblasHandle_t handle;
+					hipblasCreate(&handle);
 					m_handle = handle;
 				}
 
 };
 
-class ContextLt
-{
-    public:
-				cublasLtHandle_t m_handle;
+// class ContextLt
+// {
+//     public:
+// 				cublasLtHandle_t m_handle;
 
-				ContextLt()
-				{
-					cublasLtHandle_t handle;
-					cublasLtCreate(&handle);
-					m_handle = handle;
-				}
+// 				ContextLt()
+// 				{
+// 					cublasLtHandle_t handle;
+// 					cublasLtCreate(&handle);
+// 					m_handle = handle;
+// 				}
 
-};
+// };
 
 class ContextCusparse
 {
     public:
-				cusparseHandle_t m_handle;
+				hipsparseHandle_t m_handle;
 
 				ContextCusparse()
 				{
-					cusparseHandle_t handle;
-					cusparseCreate(&handle);
+					hipsparseHandle_t handle;
+					hipsparseCreate(&handle);
 					m_handle = handle;
 				}
 
@@ -170,7 +172,7 @@ void doubleRowColQuant(half * A, float *rowStats, float *colStats, char *out_col
 
 template <int FORMAT, int TRANSPOSE> void transformRowToFormat(char * A, char *out, int rows, int cols);
 
-void spmm_coo(cusparseHandle_t handle, int *A_rowidx, int *A_colidx, half *A_vals, int A_nnz, int A_rows, int A_cols, int B_cols, int ldb, half *B, int ldc, half* C, bool transposed_B);
+void spmm_coo(hipsparseHandle_t handle, int *A_rowidx, int *A_colidx, half *A_vals, int A_nnz, int A_rows, int A_cols, int B_cols, int ldb, half *B, int ldc, half* C, bool transposed_B);
 
 template <typename T, int BITS> void spmm_coo_very_sparse_naive(int *max_count, int *max_idx, int *offset_rowidx, int *rowidx, int *colidx, half *values, T *B, half *out, float *dequant_stats, int nnz_rows, int nnz, int rowsA, int rowsB, int colsB);
 

@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the 
 // LICENSE file in the root directory of this source tree.
 
+
+#include <hip/hip_runtime.h>
 #include <kernels.cuh>
 #include <cub/block/block_radix_sort.cuh>
 #include <cub/warp/warp_reduce.cuh>
@@ -10,7 +12,7 @@
 #include <cub/block/block_discontinuity.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/block/block_reduce.cuh>
-#include <cub/cub.cuh>
+#include <hipcub/hipcub.hpp>
 #include <math_constants.h>
 
 #define HLF_MAX 65504
@@ -232,9 +234,9 @@ __global__ void kHistogramScatterAdd2D(float* histogram, int *index1, int *index
 template<typename T, int BLOCK_SIZE, int NUM_MAX>
 __global__ void kCompressMax(T * __restrict__ const A, T* out, unsigned char* out_idx, const int n)
 {
-  typedef cub::WarpReduce<T> WarpReduce;
+  typedef hipcub::WarpReduce<T> WarpReduce;
   __shared__ typename WarpReduce::TempStorage temp_storage;
-  typedef cub::BlockLoad<T, BLOCK_SIZE/8 , 8, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+  typedef hipcub::BlockLoad<T, BLOCK_SIZE/8 , 8, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
   __shared__ typename LoadT::TempStorage loadt;
 
   const int warp_idx = threadIdx.x/32;
@@ -324,8 +326,8 @@ __global__ void kEstimateQuantiles(T *__restrict__ const A, float *code, const f
 
   T vals[NUM_ESTIMATE];
 
-  typedef cub::BlockRadixSort<T, THREADS_ESTIMATE, NUM_ESTIMATE, cub::NullType, 4, true, cub::BLOCK_SCAN_RAKING> BlockRadixSort;
-  typedef cub::BlockLoad<T, THREADS_ESTIMATE, NUM_ESTIMATE, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockRadixSort<T, THREADS_ESTIMATE, NUM_ESTIMATE, cub::NullType, 4, true, cub::BLOCK_SCAN_RAKING> BlockRadixSort;
+  typedef hipcub::BlockLoad<T, THREADS_ESTIMATE, NUM_ESTIMATE, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
 
   __shared__ union {
       typename LoadFloat::TempStorage loadf;
@@ -391,8 +393,8 @@ __global__ void kQuantize(float * code, float * __restrict__ const A, unsigned c
   unsigned char qvals[NUM];
   //const int lane_id = threadIdx.x % 2;
 
-  typedef cub::BlockLoad<float, TH, NUM, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
-  typedef cub::BlockStore<unsigned char, TH, NUM, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+  typedef hipcub::BlockLoad<float, TH, NUM, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockStore<unsigned char, TH, NUM, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
 
   __shared__ typename LoadFloat::TempStorage loadf;
   __shared__ typename StoreChar::TempStorage storec;
@@ -442,10 +444,10 @@ __global__ void kQuantizeBlockwise(float * code, T * __restrict__ const A, float
   float local_abs_max = 0.0f;
   int local_rand_idx = 0;
 
-  typedef cub::BlockLoad<T, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-  typedef cub::BlockStore<unsigned char, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
-  typedef cub::BlockReduce<float, BLOCK_SIZE/NUM_PER_TH> BlockReduce;
-  typedef cub::BlockLoad<float, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockLoad<T, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+  typedef hipcub::BlockStore<unsigned char, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+  typedef hipcub::BlockReduce<float, BLOCK_SIZE/NUM_PER_TH> BlockReduce;
+  typedef hipcub::BlockLoad<float, BLOCK_SIZE/NUM_PER_TH, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
 
   __shared__ typename LoadT::TempStorage loadt;
   __shared__ typename LoadFloat::TempStorage loadf;
@@ -521,8 +523,8 @@ __global__ void kDequantizeBlockwise(float *code, unsigned char * A, float * abs
   unsigned char qvals[NUM_PER_TH];
   float local_abs_max = -FLT_MAX;
 
-  typedef cub::BlockLoad<unsigned char, THREADS, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
-  typedef cub::BlockStore<T, THREADS, NUM_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
+  typedef hipcub::BlockLoad<unsigned char, THREADS, NUM_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
+  typedef hipcub::BlockStore<T, THREADS, NUM_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
 
   __shared__ typename LoadChar::TempStorage loadchar;
   __shared__ typename StoreT::TempStorage storet;
@@ -592,9 +594,9 @@ __global__ void kPreconditionOptimizer32bit2State(T* g, T* p,
   const float correction1 = 1.0f/(1.0f - powf(beta1, step));
   const float correction2 = 1.0f/(1.0f - powf(beta2, step));
 
-  typedef cub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
-  typedef cub::BlockLoad<float, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
-  typedef cub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
+  typedef hipcub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
+  typedef hipcub::BlockLoad<float, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
 
   __shared__ union {
       typename Load::TempStorage load;
@@ -681,11 +683,11 @@ __global__ void kOptimizer32bit2State(T* g, T* p,
   }
   else{ update_scale = 1.0f; }
 
-  typedef cub::BlockLoad<T, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
-  typedef cub::BlockStore<T, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> Store;
+  typedef hipcub::BlockLoad<T, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
+  typedef hipcub::BlockStore<T, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> Store;
 
-  typedef cub::BlockLoad<float, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
-  typedef cub::BlockStore<float, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreFloat;
+  typedef hipcub::BlockLoad<float, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockStore<float, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreFloat;
 
   __shared__ union {
       typename Load::TempStorage load;
@@ -755,9 +757,9 @@ __global__ void kPreconditionOptimizer32bit1State(T* g, T* p,
 
   float s1_vals[NUM_VALS];
 
-  typedef cub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
-  typedef cub::BlockLoad<float, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
-  typedef cub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
+  typedef hipcub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
+  typedef hipcub::BlockLoad<float, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
 
   __shared__ union {
       typename Load::TempStorage load;
@@ -843,11 +845,11 @@ __global__ void kOptimizer32bit1State(T *g, T *p,
 
   float s1_vals[NUM_PER_THREAD];
 
-  typedef cub::BlockLoad<T, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
-  typedef cub::BlockStore<T, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> Store;
+  typedef hipcub::BlockLoad<T, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> Load;
+  typedef hipcub::BlockStore<T, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> Store;
 
-  typedef cub::BlockLoad<float, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
-  typedef cub::BlockStore<float, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreFloat;
+  typedef hipcub::BlockLoad<float, TH, NUM_PER_THREAD, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadFloat;
+  typedef hipcub::BlockStore<float, TH, NUM_PER_THREAD, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreFloat;
 
   __shared__ union {
       typename Load::TempStorage load;
@@ -939,9 +941,9 @@ kPreconditionOptimizerStatic8bit2State(T* p, T* __restrict__ const g, unsigned c
     unsigned char m_c1[NUM8BIT];
     unsigned char r_c2[NUM8BIT];
 
-    typedef cub::BlockLoad<T, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadUInt8;
-    typedef cub::BlockReduce<float, NUM_THREADS> BlockReduce;
+    typedef hipcub::BlockLoad<T, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadUInt8;
+    typedef hipcub::BlockReduce<float, NUM_THREADS> BlockReduce;
 
 
     __shared__ union {
@@ -1068,11 +1070,11 @@ kOptimizerStatic8bit2State(T* p, T* const g, unsigned char* state1, unsigned cha
     unsigned char c2s[NUM_PER_THREAD2];
     T p_vals[NUM_PER_THREAD2];
     T g_vals[NUM_PER_THREAD2];
-    typedef cub::BlockLoad<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
+    typedef hipcub::BlockLoad<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
 
-    typedef cub::BlockStore<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
-    typedef cub::BlockStore<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
+    typedef hipcub::BlockStore<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+    typedef hipcub::BlockStore<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
 
     __shared__ float smem_quantiles1[256];
     __shared__ float smem_quantiles2[256];
@@ -1176,9 +1178,9 @@ kPreconditionOptimizerStatic8bit1State(T* p, T* __restrict__ const g, unsigned c
     T g_vals[NUM8BIT];
     unsigned char m_c1[NUM8BIT];
 
-    typedef cub::BlockLoad<T, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadUInt8;
-    typedef cub::BlockReduce<float, NUM_THREADS> BlockReduce;
+    typedef hipcub::BlockLoad<T, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, NUM_THREADS, NUM8BIT, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadUInt8;
+    typedef hipcub::BlockReduce<float, NUM_THREADS> BlockReduce;
 
 
     __shared__ union {
@@ -1271,11 +1273,11 @@ kOptimizerStatic8bit1State(T* p, T* const g, unsigned char* state1,
     unsigned char c1s[NUM_PER_THREAD2];
     T p_vals[NUM_PER_THREAD2];
     T g_vals[NUM_PER_THREAD2];
-    typedef cub::BlockLoad<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
+    typedef hipcub::BlockLoad<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
 
-    typedef cub::BlockStore<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
-    typedef cub::BlockStore<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
+    typedef hipcub::BlockStore<unsigned char, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+    typedef hipcub::BlockStore<T, NUM_THREADS2, NUM_PER_THREAD2, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
 
     __shared__ float smem_quantiles1[256];
 
@@ -1353,8 +1355,8 @@ __global__ void kPercentileClipping(T * __restrict__ g, float *gnorm_vec, int st
   const int n_full = (BLOCK_SIZE*(n/BLOCK_SIZE)) + (n % BLOCK_SIZE == 0 ? 0 : BLOCK_SIZE);
   int valid_items = 0;
 
-  typedef cub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
-  typedef cub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+  typedef hipcub::BlockReduce<float, BLOCK_SIZE/NUM_VALS> BlockReduce;
+  typedef hipcub::BlockLoad<T, BLOCK_SIZE/NUM_VALS, NUM_VALS, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
 
   __shared__ typename BlockReduce::TempStorage reduce;
 
@@ -1426,16 +1428,16 @@ kOptimizerStatic8bit2StateBlockwise(T* p, T* __restrict__ const g, unsigned char
     unsigned char c1s[N_PER_TH];
     unsigned char c2s[N_PER_TH];
     T g_vals[N_PER_TH];
-    typedef cub::BlockLoad<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
+    typedef hipcub::BlockLoad<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
 
-    typedef cub::BlockStore<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
-    typedef cub::BlockStore<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
+    typedef hipcub::BlockStore<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+    typedef hipcub::BlockStore<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
 
     __shared__ float smem_quantiles1[LANES][257];
     __shared__ float smem_quantiles2[LANES][257];
-    typedef cub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce1;
-    typedef cub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce2;
+    typedef hipcub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce1;
+    typedef hipcub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce2;
     __shared__ typename BlockReduce1::TempStorage reduce1;
     __shared__ typename BlockReduce2::TempStorage reduce2;
     __shared__ float smem_exchange1[1];
@@ -1599,14 +1601,14 @@ kOptimizerStatic8bit1StateBlockwise(T* p, T* __restrict__ const g, unsigned char
     T g_vals[N_PER_TH];
 		T p_vals[N_PER_TH];
 
-    typedef cub::BlockLoad<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
-    typedef cub::BlockLoad<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
+    typedef hipcub::BlockLoad<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadT;
+    typedef hipcub::BlockLoad<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_LOAD_WARP_TRANSPOSE> LoadChar;
 
-    typedef cub::BlockStore<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
-    typedef cub::BlockStore<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
+    typedef hipcub::BlockStore<unsigned char, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreChar;
+    typedef hipcub::BlockStore<T, BLOCK_SIZE/N_PER_TH, N_PER_TH, cub::BLOCK_STORE_WARP_TRANSPOSE> StoreT;
 
     __shared__ float smem_quantiles1[LANES][257];
-    typedef cub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce1;
+    typedef hipcub::BlockReduce<float, BLOCK_SIZE/N_PER_TH> BlockReduce1;
     __shared__ typename BlockReduce1::TempStorage reduce1;
     __shared__ float smem_exchange1[1];
 
@@ -1756,10 +1758,10 @@ template<typename T, int THREADS, int ITEMS_PER_THREAD, int TILE_ROWS, int TILE_
   const int base_idx = (base_row*cols) + base_col;
   const int items_per_load = ITEMS_PER_THREAD*THREADS;
 
-  typedef cub::BlockLoad<T, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_VECTORIZE> LoadT;
-  typedef cub::BlockReduce<float, THREADS> BlockRowReduce;
-  typedef cub::BlockReduce<int, THREADS> BlockRowSum;
-  typedef cub::BlockExchange<float, THREADS, ITEMS_PER_THREAD> BlockExchange;
+  typedef hipcub::BlockLoad<T, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_VECTORIZE> LoadT;
+  typedef hipcub::BlockReduce<float, THREADS> BlockRowReduce;
+  typedef hipcub::BlockReduce<int, THREADS> BlockRowSum;
+  typedef hipcub::BlockExchange<float, THREADS, ITEMS_PER_THREAD> BlockExchange;
 
   __shared__ union {
     typename BlockExchange::TempStorage exchange;
@@ -1945,8 +1947,8 @@ template <int ITEMS_PER_THREAD, int SUBTILE_ROWS, int THREADS>__global__ void kd
   float local_rowStats[ITEMS_PER_THREAD];
   __shared__ float smem_rowStats[SUBTILE_ROWS];
 
-  typedef cub::BlockLoad<int, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> LoadInt32;
-  typedef cub::BlockExchange<int, THREADS, ITEMS_PER_THREAD> ExchangeInt32;
+  typedef hipcub::BlockLoad<int, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_DIRECT> LoadInt32;
+  typedef hipcub::BlockExchange<int, THREADS, ITEMS_PER_THREAD> ExchangeInt32;
   __shared__ typename LoadInt32::TempStorage loadint32;
   __shared__ typename ExchangeInt32::TempStorage exchangeint32;
 
@@ -2033,9 +2035,9 @@ template <int THREADS, int ITEMS_PER_THREAD, int TILE_ROWS, int TILE_COLS, int S
   const int base_idx = (base_row*cols) + base_col;
   const int items_per_load = ITEMS_PER_THREAD*THREADS;
 
-  typedef cub::BlockLoad<half, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_VECTORIZE> LoadHalf;
+  typedef hipcub::BlockLoad<half, THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_VECTORIZE> LoadHalf;
   __shared__ typename LoadHalf::TempStorage loadhalf;
-  typedef cub::BlockStore<char, THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_VECTORIZE> StoreInt8;
+  typedef hipcub::BlockStore<char, THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_VECTORIZE> StoreInt8;
   __shared__ typename StoreInt8::TempStorage storeint8;
 
   __shared__ float smem_row_stats[TILE_ROWS];
@@ -2168,7 +2170,7 @@ template <int THREADS, int ITEMS_PER_THREAD, int TILE_ROWS, int TILE_COLS, int T
   // so that we can have contiguous stores
   __shared__ char smem_data[32*33*ITEMS_PER_THREAD];
   char local_data[ITEMS_PER_THREAD];
-  typedef cub::BlockExchange<char, THREADS, ITEMS_PER_THREAD> BlockExchange;
+  typedef hipcub::BlockExchange<char, THREADS, ITEMS_PER_THREAD> BlockExchange;
 
   // we load row after row from the base_position
   // Load data row by row
