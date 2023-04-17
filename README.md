@@ -18,7 +18,7 @@ Linux distribution (Ubuntu, MacOS, etc.) + CUDA >= 10.0. LLM.int8() requires Tur
 The HIP version does not provide binary release so that you need to compile from source. If this happens please consider submitting a bug report with python -m bitsandbytes information.
 
 ```shell
-git clone https://github.com/jinsihou19/bitsandbytes.git
+git clone https://github.com/xxx/bitsandbytes.git
 cd bitsandbytes
 make hip
 CUDA_VERSION=gfx1035 python setup.py install
