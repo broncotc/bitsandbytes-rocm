@@ -1,20 +1,21 @@
 # Compiling from source
+This has been ammended from the original source with details on how to compile for ROCm 5.5, and the 7900XT series. Ensure all other version of bitsandbytes are uninstalled before continuing.
 
-Basic steps.
-1. `make [target]` where `[target]` is among `cuda92, cuda10x, cuda110, cuda11x, cpuonly`
-2. `CUDA_VERSION=XXX python setup.py install`
+I think this may work on the 6000 series too, but you may need to ammend the amdgpu-target from gfx1100 to the specific gfx for your card on Makefile lines 246 & 247:
 
-To run these steps you will need to have the nvcc compiler installed that comes with a CUDA installation. If you use anaconda (recommended) then you can figure out which version of CUDA you are using with PyTorch via the command `conda list | grep cudatoolkit`. Then you can install the nvcc compiler by downloading and installing the same CUDA version from the [CUDA toolkit archive](https://developer.nvidia.com/cuda-toolkit-archive). 
+'''
+	/opt/rocm/bin/hipcc -std=c++14 -c -fPIC --amdgpu-target=gfx1100 $(HIP_INCLUDE) -o $(BUILD_DIR)/ops.o -D NO_CUBLASLT $(CSRC)/ops.cu
+	/opt/rocm/bin/hipcc -std=c++14 -c -fPIC --amdgpu-target=gfx1100 $(HIP_INCLUDE) -o $(BUILD_DIR)/kernels.o -D NO_CUBLASLT $(CSRC)/kernels.cu
+'''
 
-For your convenience, there is an installation script in the root directory that installs CUDA 11.1 locally and configures it automatically. After installing you should add the `bin` sub-directory to the `$PATH` variable to make the compiler visible to your system. To do this you can add this to your `.bashrc` by executing these commands:
-```bash
-echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64/" >> ~/.bashrc
-echo "export PATH=$PATH:/usr/local/cuda/bin/" >> ~/.bashrc
-source ~/.bashrc
+There is probably a way to do this really cleanly, but i'm extreemly new to all of this!
+
+You will need the ROCm hiplibsdk library at a minimum... probably.
+
+```
+git clone https://github.com/andrewcharlwood/bitsandbytes-rocm-7900XT/
+cd bitsandbytes-rocm-7900XT
+make hip
+python setup.py install
 ```
 
-By default, the Makefile will look at your `CUDA_HOME` environmental variable to find your CUDA version for compiling the library. If this path is not set it is inferred from the path of your `nvcc` compiler. 
-
-Either `nvcc` needs to be in path for the `CUDA_HOME` variable needs to be set to the CUDA directory root (e.g. `/usr/local/cuda`) in order for compilation to succeed
-
-If you have problems compiling the library with these instructions from source, please open an issue.
