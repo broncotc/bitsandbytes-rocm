@@ -22,8 +22,9 @@ cd bitsandbytes-rocm-7900XT
 make hip
 python setup.py install
 ```
-# bitsandbytes-rocm-7900XT
+# Original rep readme:
 
+# bitsandbytes
 The bitsandbytes is a lightweight wrapper around CUDA custom functions, in particular 8-bit optimizers, matrix multiplication (LLM.int8()), and quantization functions. 
 
 Resources:
