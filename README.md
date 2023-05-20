@@ -1,6 +1,6 @@
-# bitsandbytes
+# bitsandbytes-rocm-7900XT
 
-The bitsandbytes is a lightweight wrapper around CUDA custom functions, in particular 8-bit optimizers, matrix multiplication (LLM.int8()), and quantization functions. 
+This is a branch of the bitandbytes-rocm repo, with minor updates to enable running ROCm 5.5 & 7900XT. As mentioned in "Compiling from source", it is likely this will build on 6000 series etc, but you may need to ammend the maker file to reflect your card. 
 
 # Compiling from source
 This has been ammended from the original source with details on how to compile for ROCm 5.5, and the 7900XT series. Ensure all other version of bitsandbytes are uninstalled before continuing.
@@ -22,6 +22,9 @@ cd bitsandbytes-rocm-7900XT
 make hip
 python setup.py install
 ```
+# bitsandbytes-rocm-7900XT
+
+The bitsandbytes is a lightweight wrapper around CUDA custom functions, in particular 8-bit optimizers, matrix multiplication (LLM.int8()), and quantization functions. 
 
 Resources:
 - [8-bit Optimizer Paper](https://arxiv.org/abs/2110.02861) --  [Video](https://www.youtube.com/watch?v=IxrlHAJtqKE) -- [Docs](https://bitsandbytes.readthedocs.io/en/latest/)
